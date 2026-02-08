@@ -1,0 +1,225 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"time"
+
+	"gopkg.in/yaml.v3"
+)
+
+// Config представляет конфигурацию приложения
+type Config struct {
+	Server   ServerConfig   `yaml:"server"`
+	Database DatabaseConfig `yaml:"database"`
+	Cache    CacheConfig    `yaml:"cache"`
+	Skinport SkinportConfig `yaml:"skinport"`
+	Log      LogConfig      `yaml:"log"`
+}
+
+// ServerConfig конфигурация HTTP сервера
+type ServerConfig struct {
+	Port            int           `yaml:"port"`
+	ReadTimeout     time.Duration `yaml:"read_timeout"`
+	WriteTimeout    time.Duration `yaml:"write_timeout"`
+	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
+}
+
+// DatabaseConfig конфигурация базы данных
+type DatabaseConfig struct {
+	URL             string        `yaml:"url"`
+	MaxOpenConns    int           `yaml:"max_open_conns"`
+	MaxIdleConns    int           `yaml:"max_idle_conns"`
+	ConnMaxLifetime time.Duration `yaml:"conn_max_lifetime"`
+}
+
+// CacheConfig конфигурация кэша
+type CacheConfig struct {
+	TTL time.Duration `yaml:"ttl"`
+}
+
+// SkinportConfig конфигурация Skinport API
+type SkinportConfig struct {
+	APIURL  string        `yaml:"api_url"`
+	Timeout time.Duration `yaml:"timeout"`
+}
+
+// LogConfig конфигурация логирования
+type LogConfig struct {
+	Level  string `yaml:"level"`
+	Format string `yaml:"format"`
+}
+
+// Load загружает конфигурацию из файла и переменных окружения
+func Load(path string) (*Config, error) {
+	cfg := &Config{}
+
+	// Загружаем из файла если указан
+	if path != "" {
+		if err := cfg.loadFromFile(path); err != nil {
+			return nil, fmt.Errorf("failed to load config from file: %w", err)
+		}
+	}
+
+	// Переопределяем из ENV
+	cfg.loadFromEnv()
+
+	// Устанавливаем значения по умолчанию
+	cfg.setDefaults()
+
+	// Валидируем
+	if err := cfg.validate(); err != nil {
+		return nil, fmt.Errorf("config validation failed: %w", err)
+	}
+
+	return cfg, nil
+}
+
+func (c *Config) loadFromFile(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	// Раскрываем переменные окружения в YAML
+	expanded := os.ExpandEnv(string(data))
+
+	return yaml.Unmarshal([]byte(expanded), c)
+}
+
+func (c *Config) loadFromEnv() {
+	// Server
+	if port := os.Getenv("SERVER_PORT"); port != "" {
+		if p, err := strconv.Atoi(port); err == nil {
+			c.Server.Port = p
+		}
+	}
+	if timeout := os.Getenv("SERVER_READ_TIMEOUT"); timeout != "" {
+		if d, err := time.ParseDuration(timeout); err == nil {
+			c.Server.ReadTimeout = d
+		}
+	}
+	if timeout := os.Getenv("SERVER_WRITE_TIMEOUT"); timeout != "" {
+		if d, err := time.ParseDuration(timeout); err == nil {
+			c.Server.WriteTimeout = d
+		}
+	}
+	if timeout := os.Getenv("SERVER_SHUTDOWN_TIMEOUT"); timeout != "" {
+		if d, err := time.ParseDuration(timeout); err == nil {
+			c.Server.ShutdownTimeout = d
+		}
+	}
+
+	// Database
+	if url := os.Getenv("DATABASE_URL"); url != "" {
+		c.Database.URL = url
+	}
+	if conns := os.Getenv("DB_MAX_OPEN_CONNS"); conns != "" {
+		if n, err := strconv.Atoi(conns); err == nil {
+			c.Database.MaxOpenConns = n
+		}
+	}
+	if conns := os.Getenv("DB_MAX_IDLE_CONNS"); conns != "" {
+		if n, err := strconv.Atoi(conns); err == nil {
+			c.Database.MaxIdleConns = n
+		}
+	}
+	if lifetime := os.Getenv("DB_CONN_MAX_LIFETIME"); lifetime != "" {
+		if d, err := time.ParseDuration(lifetime); err == nil {
+			c.Database.ConnMaxLifetime = d
+		}
+	}
+
+	// Cache
+	if ttl := os.Getenv("CACHE_TTL"); ttl != "" {
+		if d, err := time.ParseDuration(ttl); err == nil {
+			c.Cache.TTL = d
+		}
+	}
+
+	// Skinport
+	if url := os.Getenv("SKINPORT_API_URL"); url != "" {
+		c.Skinport.APIURL = url
+	}
+	if timeout := os.Getenv("SKINPORT_TIMEOUT"); timeout != "" {
+		if d, err := time.ParseDuration(timeout); err == nil {
+			c.Skinport.Timeout = d
+		}
+	}
+
+	// Log
+	if level := os.Getenv("LOG_LEVEL"); level != "" {
+		c.Log.Level = level
+	}
+	if format := os.Getenv("LOG_FORMAT"); format != "" {
+		c.Log.Format = format
+	}
+}
+
+func (c *Config) setDefaults() {
+	// Server defaults
+	if c.Server.Port == 0 {
+		c.Server.Port = 8080
+	}
+	if c.Server.ReadTimeout == 0 {
+		c.Server.ReadTimeout = 10 * time.Second
+	}
+	if c.Server.WriteTimeout == 0 {
+		c.Server.WriteTimeout = 10 * time.Second
+	}
+	if c.Server.ShutdownTimeout == 0 {
+		c.Server.ShutdownTimeout = 5 * time.Second
+	}
+
+	// Database defaults
+	if c.Database.URL == "" {
+		c.Database.URL = "postgres://postgres:postgres@localhost:5432/skinport?sslmode=disable"
+	}
+	if c.Database.MaxOpenConns == 0 {
+		c.Database.MaxOpenConns = 25
+	}
+	if c.Database.MaxIdleConns == 0 {
+		c.Database.MaxIdleConns = 5
+	}
+	if c.Database.ConnMaxLifetime == 0 {
+		c.Database.ConnMaxLifetime = 5 * time.Minute
+	}
+
+	// Cache defaults
+	if c.Cache.TTL == 0 {
+		c.Cache.TTL = 5 * time.Minute
+	}
+
+	// Skinport defaults
+	if c.Skinport.APIURL == "" {
+		c.Skinport.APIURL = "https://api.skinport.com/v1"
+	}
+	if c.Skinport.Timeout == 0 {
+		c.Skinport.Timeout = 30 * time.Second
+	}
+
+	// Log defaults
+	if c.Log.Level == "" {
+		c.Log.Level = "info"
+	}
+	if c.Log.Format == "" {
+		c.Log.Format = "json"
+	}
+}
+
+func (c *Config) validate() error {
+	if c.Server.Port <= 0 || c.Server.Port > 65535 {
+		return fmt.Errorf("invalid server port: %d", c.Server.Port)
+	}
+
+	if c.Database.URL == "" {
+		return fmt.Errorf("database URL is required")
+	}
+
+	if c.Skinport.APIURL == "" {
+		return fmt.Errorf("skinport API URL is required")
+	}
+
+	return nil
+}

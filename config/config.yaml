@@ -1,0 +1,22 @@
+server:
+  port: ${SERVER_PORT:8080}
+  read_timeout: ${SERVER_READ_TIMEOUT:10s}
+  write_timeout: ${SERVER_WRITE_TIMEOUT:10s}
+  shutdown_timeout: ${SERVER_SHUTDOWN_TIMEOUT:5s}
+
+database:
+  url: ${DATABASE_URL:postgres://postgres:postgres@localhost:5432/skinport?sslmode=disable}
+  max_open_conns: ${DB_MAX_OPEN_CONNS:25}
+  max_idle_conns: ${DB_MAX_IDLE_CONNS:5}
+  conn_max_lifetime: ${DB_CONN_MAX_LIFETIME:5m}
+
+cache:
+  ttl: ${CACHE_TTL:5m}
+
+skinport:
+  api_url: ${SKINPORT_API_URL:https://api.skinport.com/v1}
+  timeout: ${SKINPORT_TIMEOUT:30s}
+
+log:
+  level: ${LOG_LEVEL:info}
+  format: ${LOG_FORMAT:json}

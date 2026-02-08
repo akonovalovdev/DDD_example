@@ -1,0 +1,43 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/skinport?sslmode=disable
+      - SERVER_PORT=8080
+      - CACHE_TTL=5m
+      - SKINPORT_API_URL=https://api.skinport.com/v1
+      - LOG_LEVEL=info
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=skinport
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: gomicro/goose
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations
+    command: ["goose", "-dir", "/migrations", "postgres", "postgres://postgres:postgres@db:5432/skinport?sslmode=disable", "up"]
+
+volumes:
+  postgres_data:
