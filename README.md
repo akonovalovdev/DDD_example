@@ -106,13 +106,17 @@ curl -X GET http://localhost:8080/items
 [
   {
     "market_hash_name": "AK-47 | Redline (Field-Tested)",
+    "currency": "USD",
+    "suggested_price": "15.23",
+    "item_page": "https://skinport.com/item/...",
+    "market_page": "https://skinport.com/market/...",
     "tradable_min_price": "12.50",
-    "non_tradable_min_price": "10.20"
-  },
-  {
-    "market_hash_name": "AWP | Asiimov (Field-Tested)",
-    "tradable_min_price": "45.00",
-    "non_tradable_min_price": "42.30"
+    "non_tradable_min_price": "10.20",
+    "max_price": "25.00",
+    "mean_price": "18.75",
+    "quantity": 150,
+    "created_at": 1609459200,
+    "updated_at": 1609459200
   }
 ]
 ```

@@ -16,9 +16,17 @@ import (
 
 // SkinportItem представляет предмет из API Skinport
 type SkinportItem struct {
-	MarketHashName string   `json:"market_hash_name"`
-	MinPrice       *float64 `json:"min_price"`
-	SuggestedPrice *float64 `json:"suggested_price"`
+MarketHashName string   `json:"market_hash_name"`
+Currency       string   `json:"currency"`
+SuggestedPrice *float64 `json:"suggested_price"`
+ItemPage       string   `json:"item_page"`
+MarketPage     string   `json:"market_page"`
+MinPrice       *float64 `json:"min_price"`
+MaxPrice       *float64 `json:"max_price"`
+MeanPrice      *float64 `json:"mean_price"`
+Quantity       int      `json:"quantity"`
+CreatedAt      int64    `json:"created_at"`
+UpdatedAt      int64    `json:"updated_at"`
 }
 
 // Client реализует клиент для Skinport API
@@ -126,18 +134,70 @@ func mergeItems(tradable, nonTradable map[string]*SkinportItem) []*item.Item {
 	result := make([]*item.Item, 0, len(allNames))
 
 	for name := range allNames {
-		tradablePrice := decimal.Zero
-		nonTradablePrice := decimal.Zero
+		var tradablePrice, nonTradablePrice *decimal.Decimal
+		var suggestedPrice, maxPrice, meanPrice *decimal.Decimal
+		var currency, itemPage, marketPage string
+		var quantity int
+		var createdAt, updatedAt int64
 
-		if t, ok := tradable[name]; ok && t.MinPrice != nil {
-			tradablePrice = decimal.NewFromFloat(*t.MinPrice)
+		// Берём данные из tradable
+		if t, ok := tradable[name]; ok {
+			currency = t.Currency
+			itemPage = t.ItemPage
+			marketPage = t.MarketPage
+			quantity = t.Quantity
+			createdAt = t.CreatedAt
+			updatedAt = t.UpdatedAt
+
+			if t.MinPrice != nil {
+				p := decimal.NewFromFloat(*t.MinPrice)
+				tradablePrice = &p
+			}
+			if t.SuggestedPrice != nil {
+				p := decimal.NewFromFloat(*t.SuggestedPrice)
+				suggestedPrice = &p
+			}
+			if t.MaxPrice != nil {
+				p := decimal.NewFromFloat(*t.MaxPrice)
+				maxPrice = &p
+			}
+			if t.MeanPrice != nil {
+				p := decimal.NewFromFloat(*t.MeanPrice)
+				meanPrice = &p
+			}
 		}
 
-		if nt, ok := nonTradable[name]; ok && nt.MinPrice != nil {
-			nonTradablePrice = decimal.NewFromFloat(*nt.MinPrice)
+		// Берём non-tradable цену
+		if nt, ok := nonTradable[name]; ok {
+			if nt.MinPrice != nil {
+				p := decimal.NewFromFloat(*nt.MinPrice)
+				nonTradablePrice = &p
+			}
+			// Заполняем остальные поля если не были заполнены из tradable
+			if currency == "" {
+				currency = nt.Currency
+				itemPage = nt.ItemPage
+				marketPage = nt.MarketPage
+				quantity = nt.Quantity
+				createdAt = nt.CreatedAt
+				updatedAt = nt.UpdatedAt
+			}
 		}
 
-		result = append(result, item.NewItem(name, tradablePrice, nonTradablePrice))
+		result = append(result, &item.Item{
+			MarketHashName:      name,
+			Currency:            currency,
+			SuggestedPrice:      suggestedPrice,
+			ItemPage:            itemPage,
+			MarketPage:          marketPage,
+			TradableMinPrice:    tradablePrice,
+			NonTradableMinPrice: nonTradablePrice,
+			MaxPrice:            maxPrice,
+			MeanPrice:           meanPrice,
+			Quantity:            quantity,
+			CreatedAt:           createdAt,
+			UpdatedAt:           updatedAt,
+		})
 	}
 
 	return result
