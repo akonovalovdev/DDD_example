@@ -46,9 +46,14 @@ func (m *MockCache) Clear(ctx context.Context) {
 }
 
 func TestItemService_GetItems_FromAPI(t *testing.T) {
+	price1 := decimal.NewFromFloat(100)
+	price2 := decimal.NewFromFloat(90)
+	price3 := decimal.NewFromFloat(200)
+	price4 := decimal.NewFromFloat(180)
+
 	expectedItems := []*item.Item{
-		item.NewItem("AK-47", decimal.NewFromFloat(100), decimal.NewFromFloat(90)),
-		item.NewItem("AWP", decimal.NewFromFloat(200), decimal.NewFromFloat(180)),
+		{MarketHashName: "AK-47", TradableMinPrice: &price1, NonTradableMinPrice: &price2},
+		{MarketHashName: "AWP", TradableMinPrice: &price3, NonTradableMinPrice: &price4},
 	}
 
 	fetcher := &MockItemFetcher{items: expectedItems}
@@ -78,8 +83,11 @@ func TestItemService_GetItems_FromAPI(t *testing.T) {
 }
 
 func TestItemService_GetItems_FromCache(t *testing.T) {
+	price1 := decimal.NewFromFloat(100)
+	price2 := decimal.NewFromFloat(90)
+
 	cachedItems := []*item.Item{
-		item.NewItem("Cached AK-47", decimal.NewFromFloat(100), decimal.NewFromFloat(90)),
+		{MarketHashName: "Cached AK-47", TradableMinPrice: &price1, NonTradableMinPrice: &price2},
 	}
 
 	fetcher := &MockItemFetcher{

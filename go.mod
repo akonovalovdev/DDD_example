@@ -10,3 +10,5 @@ require (
 )
 
 require github.com/andybalholm/brotli v1.2.0
+
+require golang.org/x/sync v0.19.0

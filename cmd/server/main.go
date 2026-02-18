@@ -55,6 +55,14 @@ func main() {
 	itemService := application.NewItemService(skinportClient, itemCache, cfg.Cache.TTL)
 	balanceService := application.NewBalanceService(userRepo, transactionRepo)
 
+	// Прогрев кеша при запуске (опционально, не блокирует старт при ошибке)
+	logger.Info("warming up items cache...")
+	if err := itemService.WarmUp(context.Background()); err != nil {
+		logger.Warn("cache warm-up failed, will retry on first request", slog.Any("error", err))
+	} else {
+		logger.Info("items cache warmed up successfully")
+	}
+
 	itemHandler := handlers.NewItemHandler(itemService, logger)
 	balanceHandler := handlers.NewBalanceHandler(balanceService, logger)
 

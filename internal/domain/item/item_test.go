@@ -6,12 +6,16 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func TestNewItem(t *testing.T) {
+func TestItem_Creation(t *testing.T) {
 	name := "AK-47 | Redline"
 	tradablePrice := decimal.NewFromFloat(12.50)
 	nonTradablePrice := decimal.NewFromFloat(10.20)
 
-	item := NewItem(name, tradablePrice, nonTradablePrice)
+	item := &Item{
+		MarketHashName:      name,
+		TradableMinPrice:    &tradablePrice,
+		NonTradableMinPrice: &nonTradablePrice,
+	}
 
 	if item.MarketHashName != name {
 		t.Errorf("expected market hash name %s, got %s", name, item.MarketHashName)
@@ -26,14 +30,18 @@ func TestNewItem(t *testing.T) {
 	}
 }
 
-func TestNewItem_ZeroPrices(t *testing.T) {
-	item := NewItem("Test Item", decimal.Zero, decimal.Zero)
-
-	if !item.TradableMinPrice.Equal(decimal.Zero) {
-		t.Error("expected zero tradable price")
+func TestItem_NilPrices(t *testing.T) {
+	item := &Item{
+		MarketHashName:      "Test Item",
+		TradableMinPrice:    nil,
+		NonTradableMinPrice: nil,
 	}
 
-	if !item.NonTradableMinPrice.Equal(decimal.Zero) {
-		t.Error("expected zero non-tradable price")
+	if item.TradableMinPrice != nil {
+		t.Error("expected nil tradable price")
+	}
+
+	if item.NonTradableMinPrice != nil {
+		t.Error("expected nil non-tradable price")
 	}
 }
